@@ -24,8 +24,15 @@ defmodule WeightedRoundRobin do
   @type precision :: non_neg_integer
   @type start_option :: {:name, generator_name :: atom}
 
+  @threshold_pos 2
+  @counter_pos 2
+  @dist_pos 3
+
   @doc """
   Create a new pool under the generator.
+
+  It is safe to reconfigure pools by calling `new_pool/4` with different
+  parameters, while `take/2` is being served at other processes.
   """
   @spec new_pool(wrr, pool_name, key_weights, precision) :: :ok
   def new_pool(wrr \\ __MODULE__, pool_name, key_weights, precision \\ 100)
@@ -43,14 +50,18 @@ defmodule WeightedRoundRobin do
       end)
       |> elem(0)
 
-    :ets.insert(key_ets!(wrr), {pool_name, length(weighted_dist) - 1, weighted_dist})
-    :ets.insert(counter_ets!(wrr), {pool_name, 0})
+    object = List.to_tuple([pool_name, length(weighted_dist) - 1 | weighted_dist])
+    :ets.insert(key_ets!(wrr), object)
+    :ets.insert(counter_ets!(wrr), {pool_name, -1})
 
     :ok
   end
 
   @doc """
   Delete a new pool from the generator.
+
+  It is not safe to call this function while serving other processes using
+  `take/2`.
   """
   @spec delete_pool(wrr, pool_name) :: :ok
   def delete_pool(wrr \\ __MODULE__, pool_name) do
@@ -67,23 +78,27 @@ defmodule WeightedRoundRobin do
 
       iex> :ok = WeightedRoundRobin.new_pool(:pool, [a: 0.1, b: 0.2, c: 1.0])
       iex> dist = Enum.map(1..10_000, fn _ -> WeightedRoundRobin.take(:pool) end)
-      iex> %{a: 768, b: 1542, c: 7690} = Enum.frequencies(dist)
+      iex> %{a: 768, b: 1543, c: 7689} = Enum.frequencies(dist)
   """
   @spec take(wrr, pool_name) :: any
   def take(wrr \\ __MODULE__, pool_name) do
-    case :ets.lookup(key_ets!(wrr), pool_name) do
-      [] ->
-        {:error, :not_found}
+    threshold = :ets.lookup_element(key_ets!(wrr), pool_name, @threshold_pos)
 
-      [{_pool_name, threshold, weighted_distribution}] ->
-        index =
-          :ets.update_counter(
-            counter_ets!(wrr),
-            pool_name,
-            {2, 1, threshold, 0}
-          )
+    index =
+      :ets.update_counter(
+        counter_ets!(wrr),
+        pool_name,
+        {@counter_pos, 1, threshold, 0}
+      )
 
-        Enum.at(weighted_distribution, index)
+    do_take(wrr, pool_name, index)
+  end
+
+  defp do_take(wrr, pool_name, index) do
+    try do
+      :ets.lookup_element(key_ets!(wrr), pool_name, @dist_pos + index)
+    catch
+      :error, :badarg -> take(wrr, pool_name)
     end
   end
 
