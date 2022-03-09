@@ -1,5 +1,5 @@
 defmodule WeightedRoundRobin do
-  @doc ~S"""
+  @moduledoc ~S"""
   A local, decentralized and scalable weighted round-robin generator.
 
   It allows developers to generate a sequence, evenly distributed, attending a
