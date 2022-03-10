@@ -58,17 +58,25 @@ defmodule WeightedRoundRobin do
       when is_atom(wrr) and is_list(key_weights) and is_list(options) do
     total = Enum.reduce(key_weights, 0, &(&2 + 1 / elem(&1, 1)))
 
-    kw_counts = Enum.map(key_weights, fn {k, w} -> {k, 1 / w, 0} end)
     precision = Keyword.get(options, :precision, @default_precision)
+    kw_cw = Enum.map(key_weights, fn {k, w} -> {k, w, 0} end)
 
     weighted_dist =
       0..(trunc(Float.round(total)) * precision)
-      |> Enum.reduce({[], kw_counts}, fn _, {acc, kw_counts} ->
-        kw_counts = Enum.sort_by(kw_counts, fn {_, inv_w, count} -> count * inv_w end)
-        {k, inv_w, count} = hd(kw_counts)
-        {[k | acc], [{k, inv_w, count + 1} | tl(kw_counts)]}
+      |> Enum.reduce({kw_cw, []}, fn _, {kw_cw, acc} ->
+        # NGINX smooth weighted round-robin algorithm
+        # https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
+        kw_cw = Enum.sort_by(kw_cw, fn {_, _, cw} -> cw end, :desc)
+
+        sum_weights = Enum.reduce(tl(kw_cw), 0, fn {_, w, _}, acc -> acc + w end)
+
+        {k, w, cw} = hd(kw_cw)
+        tail = Enum.map(tl(kw_cw), fn {k, w, cw} -> {k, w, cw + w} end)
+
+        {[{k, w, cw - sum_weights} | tail], [k | acc]}
       end)
-      |> elem(0)
+      |> elem(1)
+      |> Enum.reverse()
 
     threshold = length(weighted_dist) - 1
 
