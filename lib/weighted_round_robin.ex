@@ -97,7 +97,7 @@ defmodule WeightedRoundRobin do
   """
   @spec delete_pool(wrr, pool_name) :: :ok
   def delete_pool(wrr \\ __MODULE__, pool_name) do
-    for [version] <- :ets.match(version_ets!(wrr), {pool_name, :"$1", :_}) do
+    for [version] <- :ets.match(version_ets!(wrr), {{pool_name, :"$1"}, :_}) do
       :ets.delete(version_ets!(wrr), {pool_name, version})
       :ets.delete(key_ets!(wrr), {pool_name, version})
     end
