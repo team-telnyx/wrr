@@ -5,7 +5,7 @@ defmodule WeightedRoundRobin.Application do
 
   def start(_type, _args) do
     children =
-      if Application.get_env(:wrr, :start) == true,
+      if Application.get_env(:wrr, :start, true) == true,
         do: [{WeightedRoundRobin, name: WeightedRoundRobin}],
         else: []
 

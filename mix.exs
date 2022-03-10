@@ -4,7 +4,7 @@ defmodule WeightedRoundRobin.MixProject do
   def project do
     [
       app: :wrr,
-      version: "0.1.6",
+      version: "0.1.7",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -39,7 +39,7 @@ defmodule WeightedRoundRobin.MixProject do
       maintainers: ["Guilherme Balena Versiani <guilherme@telnyx.com>"],
       licenses: ["Apache 2.0"],
       links: %{"GitHub" => "https://github.com/team-telnyx/wrr"},
-      files: ~w"config lib mix.exs README.md LICENSE"
+      files: ~w"lib mix.exs README.md LICENSE"
     ]
   end
 end
