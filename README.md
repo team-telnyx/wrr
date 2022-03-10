@@ -24,7 +24,7 @@ The package can be installed by adding `wrr` to your list of dependencies in
 ```elixir
 def deps do
   [
-    {:wrr, "~> 0.1.0"}
+    {:wrr, "~> 0.1"}
   ]
 end
 ```
