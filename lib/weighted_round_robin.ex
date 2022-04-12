@@ -130,7 +130,7 @@ defmodule WeightedRoundRobin do
 
       iex> :ok = WeightedRoundRobin.new_pool(:pool, [a: 0.1, b: 0.2, c: 1.0])
       iex> dist = Enum.map(1..10_000, fn _ -> WeightedRoundRobin.take(:pool) end)
-      iex> %{a: 768, b: 1543, c: 7689} = Enum.frequencies(dist)
+      iex> %{a: 775, b: 1537, c: 7688} = Enum.frequencies(dist)
   """
   @spec take(wrr, pool_name) :: key | {:error, :not_found}
   def take(wrr \\ __MODULE__, pool_name) do
