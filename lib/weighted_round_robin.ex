@@ -44,6 +44,8 @@ defmodule WeightedRoundRobin do
 
   It is safe to reconfigure pools by calling `new_pool` with different
   parameters, while `take` is being served at other processes.
+
+  Keys with weight equal to 0.0 will be filtered out.
   """
   @spec new_pool(pool_name, key_weights) :: :ok
   def new_pool(pool_name, key_weights) when is_list(key_weights),
@@ -56,6 +58,7 @@ defmodule WeightedRoundRobin do
   @spec new_pool(wrr, pool_name, key_weights, [option]) :: :ok
   def new_pool(wrr, pool_name, key_weights, options \\ [])
       when is_atom(wrr) and is_list(key_weights) and is_list(options) do
+    key_weights = Enum.reject(key_weights, &(elem(&1, 1) == 0))
     total = Enum.reduce(key_weights, 0, &(&2 + 1 / elem(&1, 1)))
 
     precision = Keyword.get(options, :precision, @default_precision)
