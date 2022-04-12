@@ -106,6 +106,21 @@ defmodule WeightedRoundRobin do
   end
 
   @doc """
+  Resets the wrr state.
+
+  This drops all previously configured pools and resets version counter.
+  It is not safe to call this function while serving other processes using
+  `take` or concurrently with `new_pool` for the same pool.
+  """
+  @spec reset(wrr) :: :ok
+  def reset(wrr \\ __MODULE__) do
+    :ets.delete_all_objects(version_ets!(wrr))
+    :ets.insert_new(version_ets!(wrr), {@version_autoincr, 0})
+    :ets.delete_all_objects(key_ets!(wrr))
+    :ok
+  end
+
+  @doc """
   Take elements from the pool in a round-robin fashion.
 
   ## Examples
