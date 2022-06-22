@@ -83,7 +83,15 @@ defmodule WeightedRoundRobin do
 
     threshold = length(weighted_dist) - 1
 
-    version = :ets.update_counter(version_ets!(wrr), @version_autoincr, {@version_pos, 1})
+    version =
+      :ets.update_counter(
+        version_ets!(wrr),
+        @version_autoincr,
+        {@version_pos, 1},
+        # we put default here to mitigate the impact of `reset/1` removing the key
+        {@version_autoincr, 1}
+      )
+
     object = List.to_tuple([{pool_name, version}, threshold, -1 | weighted_dist])
 
     :ets.insert(key_ets!(wrr), object)
@@ -113,12 +121,14 @@ defmodule WeightedRoundRobin do
 
   This drops all previously configured pools and resets version counter.
   It is not safe to call this function while serving other processes using
-  `take` or concurrently with `new_pool` for the same pool.
+  `take` or concurrently with `new_pool` for any pool.
   """
   @spec reset(wrr) :: :ok
   def reset(wrr \\ __MODULE__) do
+    # it removes the `{@version_autoincr, pos_integer()}` object
+    # it will be inserted using a :ets.update_counter/4 default value on either first `take/2`
+    # or first `new_pool/4` call
     :ets.delete_all_objects(version_ets!(wrr))
-    :ets.insert_new(version_ets!(wrr), {@version_autoincr, 0})
     :ets.delete_all_objects(key_ets!(wrr))
     :ok
   end
@@ -148,7 +158,9 @@ defmodule WeightedRoundRobin do
             :ets.update_counter(
               key_ets!(wrr),
               {pool_name, version},
-              {@counter_pos, 1, threshold, 0}
+              {@counter_pos, 1, threshold, 0},
+              # we put default here to mitigate the impact of `reset/1` removing the key
+              {@version_autoincr, 1}
             )
 
           :ets.lookup_element(key_ets!(wrr), {pool_name, version}, @dist_pos + index)
